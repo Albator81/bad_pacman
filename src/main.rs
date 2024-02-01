@@ -119,7 +119,7 @@ fn print_map() {
 }
 
 fn collides(tile: Pos) -> bool {
-    tile.x >= WIDTH || tile.y >= HEIGHT || WALLS[tile.x][tile.y] != EMPTY
+    tile.x >= WIDTH || tile.y >= HEIGHT || WALLS[tile.y][tile.x] != EMPTY
     // works because || ignores the second condition if the first one is true
 }
 
@@ -142,7 +142,7 @@ fn adjacent_directions(direction: Direction) -> (Direction, Direction) {
     }
 }
 fn random_bool() -> bool {
-    if let Ok(clock) = SystemTime::now().duration_since(UNIX_EPOCH) {
+    if let Ok(clock) = UNIX_EPOCH.elapsed() {
         return clock.as_secs() % 2 == 0;
     } else {
         eprintln!("SystemTimeError");
@@ -163,11 +163,12 @@ fn tile_nearer_than(tile1: Pos, tile2: Pos, target_tile: Pos) -> bool {
 }
 fn to_next_tile    (tile: Pos, direction: Direction) -> Pos {
     return match direction {
-        Direction::Up    => top_tile   (tile),
-        Direction::Down  => bottom_tile(tile),
-        Direction::Right => right_tile (tile),
-        Direction::Left  => left_tile  (tile),
-        Direction::NoDirection => Pos { x: 0, y: 0 },
+        Direction::Up   if tile.y != 0 => top_tile   (tile),
+        Direction::Down                => bottom_tile(tile),
+        Direction::Right               => right_tile (tile),
+        Direction::Left if tile.x != 0 => left_tile  (tile),
+        _ => Pos { x: 0, y: 0 },
+
     }
 }
 fn pinky_target_tile(pacman_tile: Pos, pacman_direction: Direction) -> Pos {
@@ -197,23 +198,31 @@ fn clyde_target_tile(clyde_tile: Pos, pacman_tile: Pos) -> Pos {
         return CLYDE_HOME_TILE;
     }
 }
-fn to_direction    (tile: Pos, next_tile: Pos) -> Direction {
-    match (next_tile.y > tile.y, next_tile.x > tile.x) {
-        (true , _) => Direction::Down,
-        (false, _) => Direction::Up,
-        (_, true ) => Direction::Right,
-        (_, false) => Direction::Left,
-        _ => Direction::NoDirection,
+fn to_direction(tile: Pos, next_tile: Pos) -> Direction { // worst function of all time
+    if tile.x == next_tile.x {
+        if tile.y == next_tile.y {
+            return Direction::NoDirection;
+        }
+        else if tile.y < next_tile.y {
+            return Direction::Down;
+        }
+        else {
+            return Direction::Up;
+        }
+    } else if tile.x < next_tile.x {
+        return Direction::Right;
+    } else {
+        return Direction::Left;
     }
 }
-fn nearer_tile     (tile1: Pos, tile2: Pos, target_tile: Pos) -> Pos {
+fn nearer_tile(tile1: Pos, tile2: Pos, target_tile: Pos) -> Pos {
     if tile_nearer_than(tile1, tile2, target_tile) {
         return tile1;
     }
     return tile2;
 }
 
-fn next_best_direction  (tile: Pos, direction1: Direction, target_tile: Pos) -> Direction {
+fn next_best_direction(tile: Pos, direction1: Direction, target_tile: Pos) -> Direction {
     let (direction2, direction3) = adjacent_directions(direction1);
 
     let tile1: Pos = to_next_tile(tile, direction1);
